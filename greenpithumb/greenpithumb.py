@@ -91,6 +91,22 @@ def make_dht11_sensors(wiring_config):
     return temperature_sensor.TemperatureSensor(
         local_dht11), humidity_sensor.HumiditySensor(local_dht11),
 
+def make_miflora_sensors(miflora_mac):
+    """Creates sensors derived from the Mi Flora sensor.
+
+    Args:
+        wiring_config: Wiring configuration for the GreenPiThumb.
+
+    Returns:
+        A 3-tuple where the first element is a temperature sensor, the
+        second element is a soil moisture sensor and the third element is a light sensor.
+    """
+    local_miflora = miflora.CachingMiFLora(
+        lambda: MiFloraPoller(miflora_mac, GatttoolBackend))
+    return temperature_sensor.TemperatureSensor(
+        local_miflora), soil_moisture_sensor.SoilMoistureSensor(local_miflora),
+        light_sensor.LightSensor(local_miflora),
+
 
 def make_soil_moisture_sensor(adc, raspberry_pi_io, wiring_config):
     return soil_moisture_sensor.SoilMoistureSensor(
@@ -158,7 +174,7 @@ def make_pump_manager(moisture_threshold, sleep_windows, raspberry_pi_io,
 
 
 def make_sensor_pollers(poll_interval, photo_interval, record_queue,
-                        temperature_sensor, humidity_sensor,
+                        temperature_sensor,
                         soil_moisture_sensor, light_sensor, camera_manager,
                         pump_manager):
     """Creates a poller for each GreenPiThumb sensor.
@@ -168,7 +184,7 @@ def make_sensor_pollers(poll_interval, photo_interval, record_queue,
         photo_interval: The frequency at which to capture photos.
         record_queue: Queue on which to put sensor reading records.
         temperature_sensor: Sensor for measuring temperature.
-        humidity_sensor: Sensor for measuring humidity.
+        no humidity_sensor: Sensor for measuring humidity.
         soil_moisture_sensor: Sensor for measuring soil moisture.
         light_sensor: Sensor for measuring light levels.
         camera_manager: Interface for capturing photos.
@@ -190,7 +206,6 @@ def make_sensor_pollers(poll_interval, photo_interval, record_queue,
 
     return [
         poller_factory.create_temperature_poller(temperature_sensor),
-        poller_factory.create_humidity_poller(humidity_sensor),
         poller_factory.create_soil_watering_poller(
             soil_moisture_sensor,
             pump_manager),
@@ -221,12 +236,14 @@ def main(args):
     wiring_config = read_wiring_config(args.config_file)
     record_queue = Queue.Queue()
     raspberry_pi_io = pi_io.IO(GPIO)
-    adc = make_adc(wiring_config)
-    local_soil_moisture_sensor = make_soil_moisture_sensor(
-        adc, raspberry_pi_io, wiring_config)
-    local_temperature_sensor, local_humidity_sensor = make_dht11_sensors(
-        wiring_config)
-    local_light_sensor = make_light_sensor(adc, wiring_config)
+    # adc = make_adc(wiring_config)
+    local_temperature_sensor, local_soil_moisture_sensor, local_light_sensor = make_miflora_sensors(
+        "C4:7C:8D:6A:6B:3A")
+    # local_soil_moisture_sensor = make_soil_moisture_sensor(
+    #     adc, raspberry_pi_io, wiring_config)
+    # local_temperature_sensor, local_humidity_sensor = make_dht11_sensors(
+    #     wiring_config)
+    # local_light_sensor = make_light_sensor(adc, wiring_config)
     camera_manager = make_camera_manager(args.camera_rotation, args.image_path,
                                          local_light_sensor)
 
@@ -246,7 +263,7 @@ def main(args):
             datetime.timedelta(minutes=args.photo_interval),
             record_queue,
             local_temperature_sensor,
-            local_humidity_sensor,
+            # local_humidity_sensor,
             local_soil_moisture_sensor,
             local_light_sensor,
             camera_manager,
