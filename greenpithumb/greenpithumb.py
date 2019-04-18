@@ -103,9 +103,7 @@ def make_miflora_sensors(miflora_mac):
     """
     local_miflora = miflora.CachingMiFLora(
         lambda: MiFloraPoller(miflora_mac, GatttoolBackend))
-    return temperature_sensor.TemperatureSensor(
-        local_miflora), soil_moisture_sensor.SoilMoistureSensor(local_miflora),
-        light_sensor.LightSensor(local_miflora),
+    return temperature_sensor.TemperatureSensor(local_miflora), soil_moisture_sensor.SoilMoistureSensor(local_miflora), light_sensor.LightSensor(local_miflora)
 
 
 def make_soil_moisture_sensor(adc, raspberry_pi_io, wiring_config):
