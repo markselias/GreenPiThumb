@@ -5,8 +5,8 @@ import logging
 import Queue
 import time
 
-import Adafruit_DHT
-import Adafruit_MCP3008
+# import Adafruit_DHT
+# import Adafruit_MCP3008
 import picamera
 import RPi.GPIO as GPIO
 
