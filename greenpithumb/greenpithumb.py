@@ -140,7 +140,8 @@ def make_camera_manager(rotation, image_path, light_sensor):
 
 
 def make_pump_manager(moisture_threshold, sleep_windows, raspberry_pi_io,
-                      wiring_config, pump_amount, db_connection, pump_interval):
+                      # wiring_config,
+                      pump_amount, db_connection, pump_interval):
     """Creates a pump manager instance.
 
     Args:
@@ -157,7 +158,9 @@ def make_pump_manager(moisture_threshold, sleep_windows, raspberry_pi_io,
         A PumpManager instance with the given settings.
     """
     water_pump = pump.Pump(raspberry_pi_io,
-                           clock.Clock(), wiring_config.gpio_pins.pump)
+                           clock.Clock(), 36
+                           # wiring_config.gpio_pins.pump
+                           )
     pump_scheduler = pump.PumpScheduler(clock.LocalClock(), sleep_windows)
     pump_timer = clock.Timer(clock.Clock(), pump_interval)
     last_pump_time = pump_history.last_pump_time(
@@ -237,7 +240,7 @@ def create_record_processor(db_connection, record_queue):
 def main(args):
     configure_logging(args.verbose)
     logger.info('starting greenpithumb')
-    wiring_config = read_wiring_config(args.config_file)
+    # wiring_config = read_wiring_config(args.config_file)
     record_queue = Queue.Queue()
     raspberry_pi_io = pi_io.IO(GPIO)
     # adc = make_adc(wiring_config)
@@ -258,7 +261,7 @@ def main(args):
             args.moisture_threshold,
             sleep_windows.parse(args.sleep_window),
             raspberry_pi_io,
-            wiring_config,
+            # wiring_config,
             args.pump_amount,
             db_connection,
             datetime.timedelta(hours=args.pump_interval))
