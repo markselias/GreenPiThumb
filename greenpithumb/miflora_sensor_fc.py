@@ -4,7 +4,7 @@ import threading
 
 import pytz
 
-from btlewrap import available_backends, PygattBackend
+from btlewrap import available_backends, GatttoolBackend
 from miflora.miflora_poller import MiFloraPoller, \
     MI_CONDUCTIVITY, MI_MOISTURE, MI_LIGHT, MI_TEMPERATURE, MI_BATTERY
 
