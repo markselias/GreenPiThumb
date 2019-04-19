@@ -15,7 +15,7 @@ import camera_manager
 import clock
 import db_store
 import dht11
-import miflora_sensor
+from miflora_sensor import CachingMiFlora
 import humidity_sensor
 import light_sensor
 import pi_io
@@ -30,7 +30,7 @@ import wiring_config_parser
 
 from btlewrap import available_backends, PygattBackend
 
-from miflora.miflora_poller import MiFloraPoller, CachingMiFLora
+from miflora.miflora_poller import MiFloraPoller
 
 logger = logging.getLogger(__name__)
 
