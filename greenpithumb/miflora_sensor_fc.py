@@ -63,7 +63,7 @@ class CachingMiFlora(object):
 
     def soil_moisture(self):
         """Returns a recent relative humidity reading."""
-        humidity = self._miflora_read_func.parameter_value(MI_MOISTURE)
+        moisture = self._miflora_read_func.parameter_value(MI_MOISTURE)
         return moisture
 
     def temperature(self):
