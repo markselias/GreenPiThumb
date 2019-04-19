@@ -241,7 +241,7 @@ def main(args):
     configure_logging(args.verbose)
     logger.info('starting greenpithumb')
     # wiring_config = read_wiring_config(args.config_file)
-    record_queue = Queue.Queue()
+    record_queue = queue.Queue()
     raspberry_pi_io = pi_io.IO(GPIO)
     # adc = make_adc(wiring_config)
     local_temperature_sensor, local_soil_moisture_sensor, local_light_sensor = make_miflora_sensors(
