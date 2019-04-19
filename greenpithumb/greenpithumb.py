@@ -28,7 +28,7 @@ import soil_moisture_sensor
 import temperature_sensor
 import wiring_config_parser
 
-from btlewrap import available_backends, PygattBackend
+from btlewrap import available_backends, GatttoolBackend
 
 from miflora.miflora_poller import MiFloraPoller
 
@@ -107,7 +107,7 @@ def make_miflora_sensors(miflora_mac):
         second element is a soil moisture sensor and the third element is a light sensor.
     """
     local_miflora = CachingMiFlora(
-        # lambda: MiFloraPoller(miflora_mac, GatttoolBackend),
+        lambda: MiFloraPoller(miflora_mac, GatttoolBackend),
         clock.Clock())
     return temperature_sensor.TemperatureSensor(local_miflora), soil_moisture_sensor.SoilMoistureSensor(local_miflora), light_sensor.LightSensor(local_miflora)
 
