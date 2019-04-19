@@ -52,7 +52,7 @@ class CachingMiFlora(object):
             if (now - self._last_reading_time).total_seconds() >= (
                     _FRESHNESS_THRESHOLD):
                 self._last_reading_time = now
-                self._last_reading = self.miflora_read_func()
+                self._last_reading = self._miflora_read_func()
                 logger.info('MiFlora raw reading = %s', self._last_reading)
             else:
                 logger.info(
