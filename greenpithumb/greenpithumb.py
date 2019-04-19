@@ -2,12 +2,12 @@ import argparse
 import contextlib
 import datetime
 import logging
-import Queue
+import queue
 import time
 
 # import Adafruit_DHT
 # import Adafruit_MCP3008
-import picamera
+# import picamera
 import RPi.GPIO as GPIO
 
 import adc_thread_safe
@@ -174,7 +174,8 @@ def make_pump_manager(moisture_threshold, sleep_windows, raspberry_pi_io,
 
 def make_sensor_pollers(poll_interval, photo_interval, record_queue,
                         temperature_sensor,
-                        soil_moisture_sensor, light_sensor, camera_manager,
+                        soil_moisture_sensor, light_sensor,
+                        # camera_manager,
                         pump_manager):
     """Creates a poller for each GreenPiThumb sensor.
 
@@ -200,8 +201,8 @@ def make_sensor_pollers(poll_interval, photo_interval, record_queue,
     photo_make_scheduler_func = lambda: poller.Scheduler(utc_clock, photo_interval)
     poller_factory = poller.SensorPollerFactory(make_scheduler_func,
                                                 record_queue)
-    camera_poller_factory = poller.SensorPollerFactory(
-        photo_make_scheduler_func, record_queue=None)
+    # camera_poller_factory = poller.SensorPollerFactory(
+    #     photo_make_scheduler_func, record_queue=None)
 
     return [
         poller_factory.create_temperature_poller(temperature_sensor),
@@ -209,7 +210,7 @@ def make_sensor_pollers(poll_interval, photo_interval, record_queue,
             soil_moisture_sensor,
             pump_manager),
         poller_factory.create_light_poller(light_sensor),
-        camera_poller_factory.create_camera_poller(camera_manager)
+        # camera_poller_factory.create_camera_poller(camera_manager)
     ]  # yapf: disable
 
 
@@ -243,8 +244,8 @@ def main(args):
     # local_temperature_sensor, local_humidity_sensor = make_dht11_sensors(
     #     wiring_config)
     # local_light_sensor = make_light_sensor(adc, wiring_config)
-    camera_manager = make_camera_manager(args.camera_rotation, args.image_path,
-                                         local_light_sensor)
+    # camera_manager = make_camera_manager(args.camera_rotation, args.image_path,
+    #                                      local_light_sensor)
 
     with contextlib.closing(
             db_store.open_or_create_db(args.db_file)) as db_connection:
@@ -265,7 +266,7 @@ def main(args):
             # local_humidity_sensor,
             local_soil_moisture_sensor,
             local_light_sensor,
-            camera_manager,
+            # camera_manager,
             pump_manager)
         try:
             for current_poller in pollers:
