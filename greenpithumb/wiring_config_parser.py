@@ -1,5 +1,5 @@
 import collections
-import ConfigParser
+import configparser
 import io
 
 
