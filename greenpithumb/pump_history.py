@@ -11,5 +11,5 @@ def last_pump_time(watering_event_store):
     watering_history = watering_event_store.get()
     if len(list(watering_history)) == 0:
         return None
-    watering_history.sort(key=lambda record: record.timestamp)
+    list(watering_history).sort(key=lambda record: record.timestamp)
     return watering_history[-1].timestamp
