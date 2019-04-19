@@ -52,7 +52,7 @@ class CachingMiFlora(object):
             if (now - self._last_reading_time).total_seconds() >= (
                     _FRESHNESS_THRESHOLD):
                 self._last_reading_time = now
-                self._last_reading = MiFloraPoller("C4:7C:8D:6A:6B:3A", GatttoolBackend)
+                self._last_reading = self._miflora_read_func()
                 logger.info('MiFlora raw reading = %s', self._last_reading)
             else:
                 logger.info(
@@ -69,15 +69,18 @@ class CachingMiFlora(object):
 
     def temperature(self):
         """Returns a recent ambient temperature reading in Celsius."""
-        temperature = self._read_miflora.parameter_value(MI_TEMPERATURE)
+        measurement = self._read_miflora()
+        temperature = measurement.parameter_value(MI_TEMPERATURE)
         return temperature
 
     def light(self):
         """Returns a recent ambient light reading."""
-        light = self._read_miflora.parameter_value(MI_LIGHT)
+        measurement = self._read_miflora()
+        light = measurement.parameter_value(MI_LIGHT)
         return light
 
     def battery(self):
         """Returns a recent battery reading."""
-        battery = self._read_miflora.parameter_value(MI_BATTERY)
+        measurement = self._read_miflora()
+        battery = measurement.parameter_value(MI_BATTERY)
         return battery
