@@ -63,20 +63,20 @@ class CachingMiFlora(object):
 
     def soil_moisture(self):
         """Returns a recent relative humidity reading."""
-        moisture = self._miflora_read_func.parameter_value(MI_MOISTURE)
+        moisture = self._read_miflora.parameter_value(MI_MOISTURE)
         return moisture
 
     def temperature(self):
         """Returns a recent ambient temperature reading in Celsius."""
-        temperature = self._miflora_read_func.parameter_value(MI_TEMPERATURE)
+        temperature = self._read_miflora.parameter_value(MI_TEMPERATURE)
         return temperature
 
     def light(self):
         """Returns a recent ambient light reading."""
-        light = self._miflora_read_func.parameter_value(MI_LIGHT)
+        light = self._read_miflora.parameter_value(MI_LIGHT)
         return light
 
     def battery(self):
         """Returns a recent battery reading."""
-        battery = self._miflora_read_func.parameter_value(MI_BATTERY)
+        battery = self._read_miflora.parameter_value(MI_BATTERY)
         return battery
