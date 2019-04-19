@@ -15,7 +15,7 @@ import camera_manager
 import clock
 import db_store
 import dht11
-import miflora_sensor
+import miflora_sensor_fc
 import humidity_sensor
 import light_sensor
 import pi_io
@@ -106,7 +106,7 @@ def make_miflora_sensors(miflora_mac):
         A 3-tuple where the first element is a temperature sensor, the
         second element is a soil moisture sensor and the third element is a light sensor.
     """
-    local_miflora = miflora_sensor.CachingMiFLora()
+    local_miflora = miflora_sensor_fc.CachingMiFLora()
     # lambda: MiFloraPoller(miflora_mac, GatttoolBackend))
     return temperature_sensor.TemperatureSensor(local_miflora), soil_moisture_sensor.SoilMoistureSensor(local_miflora), light_sensor.LightSensor(local_miflora)
 
