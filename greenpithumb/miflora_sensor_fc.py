@@ -4,6 +4,7 @@ import threading
 
 import pytz
 
+from btlewrap import available_backends, PygattBackend
 from miflora.miflora_poller import MiFloraPoller, \
     MI_CONDUCTIVITY, MI_MOISTURE, MI_LIGHT, MI_TEMPERATURE, MI_BATTERY
 
@@ -26,7 +27,7 @@ class CachingMiFlora(object):
     """
 
     def __init__(self,
-                 miflora_read_func,
+                 # miflora_read_func,
                  clock):
         """Creates a new CachingMiFlora object.
 
@@ -34,7 +35,7 @@ class CachingMiFlora(object):
             miflora_read_func: A function that returns the temperature, soil moisture and light readings from a Mi Flora sensor.
             clock: A clock interface
         """
-        self._miflora_read_func = miflora_read_func
+        self._miflora_read_func = MiFloraPoller("C4:7C:8D:6A:6B:3A", GatttoolBackend)
         self._clock = clock
         self._last_reading_time = datetime.datetime.min.replace(tzinfo=pytz.utc)
         self._last_reading = None
