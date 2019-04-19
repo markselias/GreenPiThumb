@@ -15,7 +15,7 @@ import camera_manager
 import clock
 import db_store
 import dht11
-import miflora
+import miflora_sensor
 import humidity_sensor
 import light_sensor
 import pi_io
