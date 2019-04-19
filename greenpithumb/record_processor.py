@@ -42,7 +42,7 @@ class RecordProcessor(object):
         """
         try:
             record = self._record_queue.get_nowait()
-        except Queue.Empty:
+        except queue.Empty:
             return False
 
         if isinstance(record, db_store.SoilMoistureRecord):

@@ -1,6 +1,6 @@
 import contextlib
 import datetime
-import Queue
+import queue
 import threading
 import unittest
 
@@ -122,7 +122,7 @@ class PollerTest(unittest.TestCase):
         make_scheduler_func = lambda: self.mock_scheduler
         self.mock_sensor = mock.Mock()
         self.mock_store = mock.Mock()
-        self.record_queue = Queue.Queue()
+        self.record_queue = queue.Queue()
         self.factory = poller.SensorPollerFactory(make_scheduler_func,
                                                   self.record_queue)
 
