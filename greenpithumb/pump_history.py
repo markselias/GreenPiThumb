@@ -9,7 +9,7 @@ def last_pump_time(watering_event_store):
         Timestamp of most recent pump watering event, as a datetime.
     """
     watering_history = watering_event_store.get()
-    if len(watering_history) == 0:
+    if len(list(watering_history)) == 0:
         return None
     watering_history.sort(key=lambda record: record.timestamp)
     return watering_history[-1].timestamp
