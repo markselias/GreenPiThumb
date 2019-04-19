@@ -106,7 +106,7 @@ def make_miflora_sensors(miflora_mac):
         A 3-tuple where the first element is a temperature sensor, the
         second element is a soil moisture sensor and the third element is a light sensor.
     """
-    local_miflora = miflora.CachingMiFLora(
+    local_miflora = miflora_sensor.CachingMiFLora(
         lambda: MiFloraPoller(miflora_mac, GatttoolBackend))
     return temperature_sensor.TemperatureSensor(local_miflora), soil_moisture_sensor.SoilMoistureSensor(local_miflora), light_sensor.LightSensor(local_miflora)
 
@@ -244,8 +244,7 @@ def main(args):
     record_queue = queue.Queue()
     raspberry_pi_io = pi_io.IO(GPIO)
     # adc = make_adc(wiring_config)
-    local_temperature_sensor, local_soil_moisture_sensor, local_light_sensor = make_miflora_sensors(
-        "C4:7C:8D:6A:6B:3A")
+    local_temperature_sensor, local_soil_moisture_sensor, local_light_sensor = make_miflora_sensors("C4:7C:8D:6A:6B:3A")
     # local_soil_moisture_sensor = make_soil_moisture_sensor(
     #     adc, raspberry_pi_io, wiring_config)
     # local_temperature_sensor, local_humidity_sensor = make_dht11_sensors(
