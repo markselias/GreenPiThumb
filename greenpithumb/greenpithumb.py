@@ -28,6 +28,10 @@ import soil_moisture_sensor
 import temperature_sensor
 import wiring_config_parser
 
+from btlewrap import available_backends, PygattBackend
+
+from miflora.miflora_poller import MiFloraPoller
+
 logger = logging.getLogger(__name__)
 
 
