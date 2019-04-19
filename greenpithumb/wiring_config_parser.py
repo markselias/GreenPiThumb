@@ -181,7 +181,7 @@ def parse(config_data):
             * adc_channels.soil_moisture_sensor
             * adc_channels.light_sensor
     """
-    raw_parser = ConfigParser.RawConfigParser()
+    raw_parser = configparser.RawConfigParser()
     try:
         raw_parser.readfp(io.BytesIO(config_data))
         gpio_pin_config = _GpioPinConfig(
@@ -205,5 +205,5 @@ def parse(config_data):
                 raw_parser.get('adc_channels', 'light_sensor')))
         _validate_adc_channel_config(adc_channel_config)
         return _WiringConfig(gpio_pin_config, adc_channel_config)
-    except ConfigParser.Error as ex:
+    except configparser.Error as ex:
         raise InvalidConfigError('Failed to parse wiring config', ex)
