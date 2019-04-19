@@ -106,8 +106,9 @@ def make_miflora_sensors(miflora_mac):
         A 3-tuple where the first element is a temperature sensor, the
         second element is a soil moisture sensor and the third element is a light sensor.
     """
-    local_miflora = CachingMiFlora(clock.Clock())
-    # lambda: MiFloraPoller(miflora_mac, GatttoolBackend))
+    local_miflora = CachingMiFlora(
+        lambda: MiFloraPoller(miflora_mac, GatttoolBackend),
+        clock.Clock())
     return temperature_sensor.TemperatureSensor(local_miflora), soil_moisture_sensor.SoilMoistureSensor(local_miflora), light_sensor.LightSensor(local_miflora)
 
 
