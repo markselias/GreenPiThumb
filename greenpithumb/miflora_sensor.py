@@ -25,14 +25,17 @@ class CachingMiFlora(object):
     This class is thread-safe.
     """
 
-    def __init__(self, miflora_read_func, clock):
+    def __init__(self,
+                 # miflora_read_func, 
+                 clock):
         """Creates a new CachingMiFlora object.
 
         Args:
             miflora_read_func: A function that returns the temperature, soil moisture and light readings from a Mi Flora sensor.
             clock: A clock interface
         """
-        self._miflora_read_func = miflora_read_func
+        self._miflora_read_func = MiFloraPoller("C4:7C:8D:6A:6B:3A", GatttoolBackend)
+        # miflora_read_func
         self._clock = clock
         self._last_reading_time = datetime.datetime.min.replace(tzinfo=pytz.utc)
         self._last_reading = None
