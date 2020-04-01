@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Pump rate in mL/s (4.3 L/min)
-_PUMP_RATE_ML_PER_SEC = 4300.0 / 60.0
+_PUMP_RATE_ML_PER_SEC = 500.0 / 60.0
 
 # Default amount of water to add to the plant (in mL) when pump manager detects
 # low soil moisture.
@@ -13,15 +13,15 @@ DEFAULT_PUMP_AMOUNT = 200
 class Pump(object):
     """Wrapper for a Seaflo 12V water pump."""
 
-    def __init__(self, pi_io, clock, pump_pin):
+    def __init__(self, arduino_uart, clock, pump_pin):
         """Creates a new Pump wrapper.
 
         Args:
-            pi_io: Raspberry Pi I/O interface.
+            arduino_uart: Raspberry Pi I/O interface.
             clock: A clock interface.
             pump_pin: Raspberry Pi pin to which the pump is connected.
         """
-        self._pi_io = pi_io
+        self._arduino_uart = arduino_uart
         self._clock = clock
         self._pump_pin = pump_pin
 
@@ -40,13 +40,15 @@ class Pump(object):
             raise ValueError('Cannot pump a negative amount of water')
         else:
             logger.info('turning pump on (with GPIO pin %d)', self._pump_pin)
-            self._pi_io.turn_pin_on(self._pump_pin)
+            self._arduino_uart.txBuff[0] = 'a'
+            self._arduino_uart.send(1)
 
             wait_time_seconds = amount_ml / _PUMP_RATE_ML_PER_SEC
             self._clock.wait(wait_time_seconds)
 
             logger.info('turning pump off (with GPIO pin %d)', self._pump_pin)
-            self._pi_io.turn_pin_off(self._pump_pin)
+            self._arduino_uart.txBuff[0] = 'z'
+            self._arduino_uart.send(1)
             logger.info('pumped %.f mL of water', amount_ml)
 
         return

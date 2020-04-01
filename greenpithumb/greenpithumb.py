@@ -4,11 +4,12 @@ import datetime
 import logging
 import queue
 import time
+from time import sleep
 
 # import Adafruit_DHT
 # import Adafruit_MCP3008
 # import picamera
-import RPi.GPIO as GPIO
+# import RPi.GPIO as GPIO
 
 import adc_thread_safe
 import camera_manager
@@ -31,6 +32,7 @@ import wiring_config_parser
 from btlewrap import available_backends, GatttoolBackend
 
 from miflora.miflora_poller import MiFloraPoller
+from pySerialTransfer import pySerialTransfer as txfer
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +142,7 @@ def make_camera_manager(rotation, image_path, light_sensor):
                                         clock.Clock(), camera, light_sensor)
 
 
-def make_pump_manager(moisture_threshold, sleep_windows, raspberry_pi_io,
+def make_pump_manager(moisture_threshold, sleep_windows, arduino_uart,
                       # wiring_config,
                       pump_amount, db_connection, pump_interval):
     """Creates a pump manager instance.
@@ -149,7 +151,7 @@ def make_pump_manager(moisture_threshold, sleep_windows, raspberry_pi_io,
         moisture_threshold: The minimum moisture level below which the pump
             turns on.
         sleep_windows: Sleep windows during which pump will not turn on.
-        raspberry_pi_io: pi_io instance for the GreenPiThumb.
+        arduino_uart: serial communication instance for the GreenPiThumb.
         wiring_config: Wiring configuration for the GreenPiThumb.
         pump_amount: Amount (in mL) to pump on each run of the pump.
         db_connection: Database connection to use to retrieve pump history.
@@ -158,7 +160,7 @@ def make_pump_manager(moisture_threshold, sleep_windows, raspberry_pi_io,
     Returns:
         A PumpManager instance with the given settings.
     """
-    water_pump = pump.Pump(raspberry_pi_io,
+    water_pump = pump.Pump(arduino_uart,
                            clock.Clock(), 36
                            # wiring_config.gpio_pins.pump
                            )
@@ -243,11 +245,15 @@ def main(args):
     logger.info('starting greenpithumb')
     # wiring_config = read_wiring_config(args.config_file)
     record_queue = queue.Queue()
-    raspberry_pi_io = pi_io.IO(GPIO)
+    arduino_uart = txfer.SerialTransfer('/dev/ttyUSB0')
+    arduino_uart.open()
+    sleep(2)
+    # arduino_uart.txBuff[0] = 'a'
+    # arduino_uart.send(1)
     # adc = make_adc(wiring_config)
     local_temperature_sensor, local_soil_moisture_sensor, local_light_sensor = make_miflora_sensors("C4:7C:8D:6A:6B:3A")
     # local_soil_moisture_sensor = make_soil_moisture_sensor(
-    #     adc, raspberry_pi_io, wiring_config)
+    #     adc, arduino_uart, wiring_config)
     # local_temperature_sensor, local_humidity_sensor = make_dht11_sensors(
     #     wiring_config)
     # local_light_sensor = make_light_sensor(adc, wiring_config)
@@ -260,7 +266,7 @@ def main(args):
         pump_manager = make_pump_manager(
             args.moisture_threshold,
             sleep_windows.parse(args.sleep_window),
-            raspberry_pi_io,
+            arduino_uart,
             # wiring_config,
             args.pump_amount,
             db_connection,
@@ -286,7 +292,7 @@ def main(args):
         finally:
             for current_poller in pollers:
                 current_poller.close()
-            raspberry_pi_io.close()
+            arduino_uart.close()
 
 
 if __name__ == '__main__':

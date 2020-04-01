@@ -1,4 +1,3 @@
 pytz
 tzlocal
 python-dateutil
-RPi.GPIO
