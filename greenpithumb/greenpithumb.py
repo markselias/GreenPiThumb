@@ -237,7 +237,10 @@ def create_record_processor(db_connection, record_queue):
         db_store.LightStore(db_connection),
         db_store.HumidityStore(db_connection),
         db_store.TemperatureStore(db_connection),
-        db_store.WateringEventStore(db_connection))
+        db_store.WateringEventStore(db_connection),
+        db_store.SoilTemperatureStore(db_connection),
+        db_store.PumpStateStore(db_connection),
+        db_store.WindowStateStore(db_connection))
 
 
 def main(args):
