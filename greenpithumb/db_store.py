@@ -22,6 +22,15 @@ TemperatureRecord = collections.namedtuple('TemperatureRecord',
 WateringEventRecord = collections.namedtuple('WateringEventRecord',
                                              ['timestamp', 'water_pumped'])
 
+SoilTemperatureRecord = collections.namedtuple('SoilTemperatureRecord',
+                                            ['timestamp', 'soil_temperature'])
+
+PumpStateRecord = collections.namedtuple('PumpStateRecord',
+                                            ['timestamp', 'pump_state'])
+
+WindowStateRecord = collections.namedtuple('WindowStateRecord',
+                                            ['timestamp', 'window_state'])
+
 # SQL statements to create database tables. Each statement is separated by a
 # semicolon and newline.
 _CREATE_TABLE_COMMANDS = """
@@ -49,6 +58,21 @@ CREATE TABLE watering_events
 (
     timestamp TEXT,
     water_pumped REAL   --amount of water pumped (in mL)
+);
+CREATE TABLE soil_temperature
+(
+    timestamp TEXT,
+    soil_temperature REAL
+);
+CREATE TABLE pump_state
+(
+    timestamp TEXT,
+    pump_state INTEGER
+);
+CREATE TABLE window_state
+(
+    timestamp TEXT,
+    window_state INTEGER
 );
 """
 
@@ -259,3 +283,69 @@ class WateringEventStore(_DbStoreBase):
         """
         return self._do_get('SELECT * FROM watering_events',
                             WateringEventRecord)
+
+
+class SoilTemperatureStore(_DbStoreBase):
+    """Stores and retrieves timestamp and soil temperature readings."""
+
+    def insert(self, soil_temperature_record):
+        """Inserts temperature and timestamp info into an SQLite database.
+
+        Args:
+            soil_temperature_record: Temperature record to store.
+        """
+        self._do_insert('INSERT INTO soil_temperature VALUES (?, ?)',
+                        soil_temperature_record.timestamp,
+                        soil_temperature_record.soil_temperature)
+
+    def get(self):
+        """Retrieves timestamp and soil temperature readings.
+
+        Returns:
+            A list of objects with 'timestamp' and 'soil_temperature' fields.
+        """
+        return self._do_get('SELECT * FROM soil_temperature', SoilTemperatureRecord)
+
+
+class PumpStateStore(_DbStoreBase):
+    """Stores and retrieves timestamp and pump state."""
+
+    def insert(self, pump_state_record):
+        """Inserts pump state and timestamp info into an SQLite database.
+
+        Args:
+            pump_state_record: Pump state record to store.
+        """
+        self._do_insert('INSERT INTO pump_state VALUES (?, ?)',
+                        pump_state_record.timestamp,
+                        pump_state_record.pump_state)
+
+    def get(self):
+        """Retrieves timestamp and pump state.
+
+        Returns:
+            A list of objects with 'timestamp' and 'pump_state' fields.
+        """
+        return self._do_get('SELECT * FROM pump_state', PumpStateRecord)
+
+
+class WindowStateStore(_DbStoreBase):
+    """Stores and retrieves timestamp and window state."""
+
+    def insert(self, window_state_record):
+        """Inserts window state and timestamp info into an SQLite database.
+
+        Args:
+            window_state_record: window state record to store.
+        """
+        self._do_insert('INSERT INTO window_state VALUES (?, ?)',
+                        window_state_record.timestamp,
+                        window_state_record.window_state)
+
+    def get(self):
+        """Retrieves timestamp and window state.
+
+        Returns:
+            A list of objects with 'timestamp' and 'window_state' fields.
+        """
+        return self._do_get('SELECT * FROM window_state', WindowStateRecord)
