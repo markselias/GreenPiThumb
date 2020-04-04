@@ -17,6 +17,7 @@ import clock
 import db_store
 import dht11
 from miflora_sensor_fc import CachingMiFlora
+import arduino_sensors
 import humidity_sensor
 import light_sensor
 import pi_io
@@ -98,6 +99,21 @@ def make_adc(wiring_config):
 #         clock.Clock())
 #     return soil_temperature_sensor.TemperatureSensor(
 #         local_dht11), humidity_sensor.HumiditySensor(local_dht11),
+
+def make_arduino_sensors(arduino_uart):
+    """Creates sensors derived from the arduino sensors.
+
+    Args:
+        arduino_uart: Arduino serial port. (pySerialTransfer object)
+
+    Returns:
+        A two-tuple where the first element is a temperature sensor and the
+        second element is a humidity sensor.
+    """
+    local_arduino_sensors = arduino_sensors.CachingArduinoSensors(
+        arduino_uart,
+        clock.Clock())
+    return temperature_sensor.TemperatureSensor(local_arduino_sensors), humidity_sensor.HumiditySensor(local_arduino_sensors),
 
 def make_miflora_sensors(miflora_mac):
     """Creates sensors derived from the Mi Flora sensor.
@@ -185,9 +201,10 @@ def make_pump_manager(moisture_threshold, sleep_windows, arduino_uart,
 
 def make_sensor_pollers(poll_interval, photo_interval, record_queue,
                         soil_temperature_sensor,
-                        soil_moisture_sensor, light_sensor,
+                        soil_moisture_sensor, ambient_temperature_sensor,
+                        ambient_humidity_sensor, light_sensor,
                         # camera_manager,
-                        pump_manager):
+                        pump_manager, window_manager, fan_manager):
     """Creates a poller for each GreenPiThumb sensor.
 
     Args:
@@ -195,8 +212,9 @@ def make_sensor_pollers(poll_interval, photo_interval, record_queue,
         photo_interval: The frequency at which to capture photos.
         record_queue: Queue on which to put sensor reading records.
         soil_temperature_sensor: Sensor for measuring temperature.
-        humidity_sensor: Sensor for measuring humidity.
         soil_moisture_sensor: Sensor for measuring soil moisture.
+        ambient_temperature_sensor: Sensor for measuring ambient temperature.
+        ambient_humidity_sensor: Sensor for measuring ambient humidity.
         light_sensor: Sensor for measuring light levels.
         camera_manager: Interface for capturing photos.
         pump_manager: Interface for turning water pump on and off.
@@ -216,10 +234,15 @@ def make_sensor_pollers(poll_interval, photo_interval, record_queue,
     #     photo_make_scheduler_func, record_queue=None)
 
     return [
+        # poller_factory.create_ambient_temperature_poller(ambient_temperature_sensor),
+        # poller_factory.create_humidity_poller(ambient_humidity_sensor),
         poller_factory.create_soil_temperature_poller(soil_temperature_sensor),
         poller_factory.create_soil_watering_poller(
             soil_moisture_sensor,
             pump_manager),
+        poller_factory.create_climate_control_poller(
+            ambient_temperature_sensor, ambient_humidity_sensor,
+            window_manager, fan_manager),
         poller_factory.create_light_poller(light_sensor),
         # camera_poller_factory.create_camera_poller(camera_manager)
     ]  # yapf: disable
@@ -257,6 +280,7 @@ def main(args):
     # arduino_uart.send(1)
     # adc = make_adc(wiring_config)
     local_soil_temperature_sensor, local_soil_moisture_sensor, local_light_sensor = make_miflora_sensors("C4:7C:8D:6A:6B:3A")
+    local_ambient_temperature_sensor, local_ambient_humidity_sensor = make_arduino_sensors(arduino_uart)
     # local_soil_moisture_sensor = make_soil_moisture_sensor(
     #     adc, arduino_uart, wiring_config)
     # local_soil_temperature_sensor, local_humidity_sensor = make_dht11_sensors(
@@ -281,11 +305,14 @@ def main(args):
             datetime.timedelta(minutes=args.photo_interval),
             record_queue,
             local_soil_temperature_sensor,
-            # local_humidity_sensor,
             local_soil_moisture_sensor,
+            local_ambient_temperature_sensor,
+            local_ambient_humidity_sensor,
             local_light_sensor,
             # camera_manager,
-            pump_manager)
+            pump_manager,
+            0,
+            0)
         try:
             for current_poller in pollers:
                 current_poller.start_polling_async()

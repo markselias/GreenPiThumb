@@ -53,6 +53,13 @@ class SensorPollerFactory(object):
             _SoilWateringPollWorker(self._make_scheduler_func(
             ), self._record_queue, soil_moisture_sensor, pump_manager))
 
+    def create_climate_control_poller(self, ambient_temperature_sensor, ambient_humidity_sensor,
+                 window_manager, fan_manager):
+        return _SensorPoller(
+            _ClimateControlPollWorker(self._make_scheduler_func(
+            ), self._record_queue, ambient_temperature_sensor, ambient_humidity_sensor,
+                         window_manager, fan_manager))
+
     def create_camera_poller(self, camera_manager):
         return _SensorPoller(
             _CameraPollWorker(self._make_scheduler_func(), self._record_queue,
@@ -275,6 +282,61 @@ class _SoilWateringPollWorker(_SensorPollWorkerBase):
             self._record_queue.put(
                 db_store.WateringEventRecord(self._scheduler.last_poll_time(),
                                              ml_pumped))
+
+
+class _ClimateControlPollWorker(_SensorPollWorkerBase):
+    """Polls for and records clima control data.
+
+    Polls ambient sensors and adjusts the window aperture to regulate temperature and humidity.
+    Turns on fan if temperature or humidity are over safety threshold.
+    Records ambient sensor values, window position and fan state.
+    """
+
+    def __init__(self, scheduler, record_queue, ambient_temperature_sensor, ambient_humidity_sensor,
+                 window_manager, fan_manager):
+        """Creates a new ClimaControlPollWorker object.
+
+        Args:
+            scheduler: Poll time scheduler.
+            record_queue: Queue on which to place soil moisture records and
+                watering event records for storage.
+            ambient_temperature_sensor: An interface for reading the ambient temp level.
+            ambient_humidity_sensor:
+            window_manager: An interface to manage a window.
+            fan_manager: An interface to manage a fan.
+        """
+        super(_ClimateControlPollWorker, self).__init__(scheduler, record_queue,
+                                                      ambient_temperature_sensor)
+        self._ambient_temperature_sensor = ambient_temperature_sensor
+        self._ambient_humidity_sensor = ambient_humidity_sensor
+        self._pump_manager = window_manager
+        self._fan_manager = fan_manager
+
+    def _poll_once(self):
+        """Polls sensors and drives actuators
+
+
+        """
+        ambient_humidity = self._ambient_humidity_sensor.humidity()
+        self._record_queue.put(
+            db_store.HumidityRecord(self._scheduler.last_poll_time(),
+                                        ambient_humidity))
+
+        ambient_temperature = self._ambient_temperature_sensor.temperature()
+        self._record_queue.put(
+            db_store.TemperatureRecord(self._scheduler.last_poll_time(),
+                                        ambient_temperature))
+
+        # miflora_battery = self._sensor.battery()
+        # self._record_queue.put(
+        #     db_store.MifloraBatteryRecord(self._scheduler.last_poll_time(),
+        #                                 miflora_battery))
+        #
+        # ml_pumped = self._pump_manager.pump_if_needed(soil_moisture)
+        # if ml_pumped > 0:
+        #     self._record_queue.put(
+        #         db_store.WateringEventRecord(self._scheduler.last_poll_time(),
+        #                                      ml_pumped))
 
 
 class _CameraPollWorker(_SensorPollWorkerBase):
