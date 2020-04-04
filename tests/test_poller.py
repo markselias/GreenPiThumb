@@ -150,7 +150,7 @@ class SimplePollerClassesTest(PollerTest):
 
     def test_temperature_poller(self):
         with contextlib.closing(
-                self.factory.create_temperature_poller(
+                self.factory.create_soil_temperature_poller(
                     self.mock_sensor)) as temperature_poller:
             self.mock_is_poll_time = True
             self.mock_scheduler.last_poll_time.return_value = TIMESTAMP_A

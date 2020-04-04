@@ -27,6 +27,7 @@ import record_processor
 import sleep_windows
 import soil_moisture_sensor
 import temperature_sensor
+import soil_temperature_sensor
 import wiring_config_parser
 
 from btlewrap import available_backends, GatttoolBackend
@@ -82,27 +83,27 @@ def make_adc(wiring_config):
             mosi=wiring_config.gpio_pins.mcp3008_din))
 
 
-def make_dht11_sensors(wiring_config):
-    """Creates sensors derived from the DHT11 sensor.
-
-    Args:
-        wiring_config: Wiring configuration for the GreenPiThumb.
-
-    Returns:
-        A two-tuple where the first element is a temperature sensor and the
-        second element is a humidity sensor.
-    """
-    local_dht11 = dht11.CachingDHT11(
-        lambda: Adafruit_DHT.read_retry(Adafruit_DHT.DHT11, wiring_config.gpio_pins.dht11),
-        clock.Clock())
-    return temperature_sensor.TemperatureSensor(
-        local_dht11), humidity_sensor.HumiditySensor(local_dht11),
+# def make_dht11_sensors(wiring_config):
+#     """Creates sensors derived from the DHT11 sensor.
+#
+#     Args:
+#         wiring_config: Wiring configuration for the GreenPiThumb.
+#
+#     Returns:
+#         A two-tuple where the first element is a temperature sensor and the
+#         second element is a humidity sensor.
+#     """
+#     local_dht11 = dht11.CachingDHT11(
+#         lambda: Adafruit_DHT.read_retry(Adafruit_DHT.DHT11, wiring_config.gpio_pins.dht11),
+#         clock.Clock())
+#     return soil_temperature_sensor.TemperatureSensor(
+#         local_dht11), humidity_sensor.HumiditySensor(local_dht11),
 
 def make_miflora_sensors(miflora_mac):
     """Creates sensors derived from the Mi Flora sensor.
 
     Args:
-        wiring_config: Wiring configuration for the GreenPiThumb.
+        miflora_mac: Miflora bluetooth mac address.
 
     Returns:
         A 3-tuple where the first element is a temperature sensor, the
@@ -111,13 +112,13 @@ def make_miflora_sensors(miflora_mac):
     local_miflora = CachingMiFlora(
         lambda: MiFloraPoller(miflora_mac, GatttoolBackend),
         clock.Clock())
-    return temperature_sensor.TemperatureSensor(local_miflora), soil_moisture_sensor.SoilMoistureSensor(local_miflora), light_sensor.LightSensor(local_miflora)
+    return soil_temperature_sensor.SoilTemperatureSensor(local_miflora), soil_moisture_sensor.SoilMoistureSensor(local_miflora), light_sensor.LightSensor(local_miflora)
 
 
-def make_soil_moisture_sensor(adc, raspberry_pi_io, wiring_config):
-    return soil_moisture_sensor.SoilMoistureSensor(
-        adc, raspberry_pi_io, wiring_config.adc_channels.soil_moisture_sensor,
-        wiring_config.gpio_pins.soil_moisture)
+# def make_soil_moisture_sensor(adc, raspberry_pi_io, wiring_config):
+#     return soil_moisture_sensor.SoilMoistureSensor(
+#         adc, raspberry_pi_io, wiring_config.adc_channels.soil_moisture_sensor,
+#         wiring_config.gpio_pins.soil_moisture)
 
 
 def make_light_sensor(adc, wiring_config):
@@ -183,7 +184,7 @@ def make_pump_manager(moisture_threshold, sleep_windows, arduino_uart,
 
 
 def make_sensor_pollers(poll_interval, photo_interval, record_queue,
-                        temperature_sensor,
+                        soil_temperature_sensor,
                         soil_moisture_sensor, light_sensor,
                         # camera_manager,
                         pump_manager):
@@ -193,8 +194,8 @@ def make_sensor_pollers(poll_interval, photo_interval, record_queue,
         poll_interval: The frequency at which to poll non-camera sensors.
         photo_interval: The frequency at which to capture photos.
         record_queue: Queue on which to put sensor reading records.
-        temperature_sensor: Sensor for measuring temperature.
-        no humidity_sensor: Sensor for measuring humidity.
+        soil_temperature_sensor: Sensor for measuring temperature.
+        humidity_sensor: Sensor for measuring humidity.
         soil_moisture_sensor: Sensor for measuring soil moisture.
         light_sensor: Sensor for measuring light levels.
         camera_manager: Interface for capturing photos.
@@ -215,7 +216,7 @@ def make_sensor_pollers(poll_interval, photo_interval, record_queue,
     #     photo_make_scheduler_func, record_queue=None)
 
     return [
-        poller_factory.create_temperature_poller(temperature_sensor),
+        poller_factory.create_soil_temperature_poller(soil_temperature_sensor),
         poller_factory.create_soil_watering_poller(
             soil_moisture_sensor,
             pump_manager),
@@ -240,7 +241,8 @@ def create_record_processor(db_connection, record_queue):
         db_store.WateringEventStore(db_connection),
         db_store.SoilTemperatureStore(db_connection),
         db_store.PumpStateStore(db_connection),
-        db_store.WindowStateStore(db_connection))
+        db_store.WindowStateStore(db_connection),
+        db_store.MifloraBatteryStore(db_connection))
 
 
 def main(args):
@@ -254,10 +256,10 @@ def main(args):
     # arduino_uart.txBuff[0] = 'a'
     # arduino_uart.send(1)
     # adc = make_adc(wiring_config)
-    local_temperature_sensor, local_soil_moisture_sensor, local_light_sensor = make_miflora_sensors("C4:7C:8D:6A:6B:3A")
+    local_soil_temperature_sensor, local_soil_moisture_sensor, local_light_sensor = make_miflora_sensors("C4:7C:8D:6A:6B:3A")
     # local_soil_moisture_sensor = make_soil_moisture_sensor(
     #     adc, arduino_uart, wiring_config)
-    # local_temperature_sensor, local_humidity_sensor = make_dht11_sensors(
+    # local_soil_temperature_sensor, local_humidity_sensor = make_dht11_sensors(
     #     wiring_config)
     # local_light_sensor = make_light_sensor(adc, wiring_config)
     # camera_manager = make_camera_manager(args.camera_rotation, args.image_path,
@@ -278,7 +280,7 @@ def main(args):
             datetime.timedelta(minutes=args.poll_interval),
             datetime.timedelta(minutes=args.photo_interval),
             record_queue,
-            local_temperature_sensor,
+            local_soil_temperature_sensor,
             # local_humidity_sensor,
             local_soil_moisture_sensor,
             local_light_sensor,

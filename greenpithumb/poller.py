@@ -28,10 +28,15 @@ class SensorPollerFactory(object):
         self._make_scheduler_func = make_scheduler_func
         self._record_queue = record_queue
 
-    def create_temperature_poller(self, temperature_sensor):
+    def create_soil_temperature_poller(self, soil_temperature_sensor):
+        return _SensorPoller(
+            _SoilTemperaturePollWorker(self._make_scheduler_func(),
+                                   self._record_queue, soil_temperature_sensor))
+
+    def create_ambient_temperature_poller(self, ambient_temperature_sensor):
         return _SensorPoller(
             _TemperaturePollWorker(self._make_scheduler_func(),
-                                   self._record_queue, temperature_sensor))
+                                   self._record_queue, ambient_temperature_sensor))
 
     def create_humidity_poller(self, humidity_sensor):
         return _SensorPoller(
@@ -193,6 +198,17 @@ class _TemperaturePollWorker(_SensorPollWorkerBase):
                                        temperature))
 
 
+class _SoilTemperaturePollWorker(_SensorPollWorkerBase):
+    """Polls a temperature sensor and stores the readings."""
+
+    def _poll_once(self):
+        """Polls for current temperature and queues DB record."""
+        temperature = self._sensor.temperature()
+        self._record_queue.put(
+            db_store.SoilTemperatureRecord(self._scheduler.last_poll_time(),
+                                       temperature))
+
+
 class _HumidityPollWorker(_SensorPollWorkerBase):
     """Polls a humidity sensor and stores the readings."""
 
@@ -236,16 +252,24 @@ class _SoilWateringPollWorker(_SensorPollWorkerBase):
         self._pump_manager = pump_manager
 
     def _poll_once(self):
-        """Polls soil moisture and adds water if moisture is too low.
+        """Polls soil moisture and adds water if moisture is too low and reads battery.
 
         Checks soil moisture levels and records the current level. Using the
         current soil moisture level, checks if the pump needs to run, and if so,
-        runs the pump and records the watering event.
+        runs the pump and records the watering event. Reads also the battery level.
+
+
         """
         soil_moisture = self._sensor.soil_moisture()
         self._record_queue.put(
             db_store.SoilMoistureRecord(self._scheduler.last_poll_time(),
                                         soil_moisture))
+
+        miflora_battery = self._sensor.battery()
+        self._record_queue.put(
+            db_store.MifloraBatteryRecord(self._scheduler.last_poll_time(),
+                                        miflora_battery))
+
         ml_pumped = self._pump_manager.pump_if_needed(soil_moisture)
         if ml_pumped > 0:
             self._record_queue.put(

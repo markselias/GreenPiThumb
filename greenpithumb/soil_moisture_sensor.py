@@ -10,7 +10,7 @@ class SoilMoistureSensor(object):
         """Creates a new SoilMoistureSensor wrapper.
 
         Args:
-            sensor: sensor instance that returns temperature readings.
+            sensor: sensor instance that returns moisture readings.
         """
         self._sensor = sensor
 
@@ -19,6 +19,12 @@ class SoilMoistureSensor(object):
         moisture = self._sensor.soil_moisture()
         logging.info('soil moisture reading = %d', moisture)
         return moisture
+
+    def battery(self):
+        """Returns the miflora battery level."""
+        battery = self._sensor.battery()
+        logging.info('battery reading = %d', battery)
+        return battery
     # def __init__(self, adc, pi_io, channel, gpio_pin):
     #     """Creates a new SoilMoistureSensor instance.
     #
