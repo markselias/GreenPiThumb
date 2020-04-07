@@ -30,6 +30,7 @@ import soil_moisture_sensor
 import temperature_sensor
 import soil_temperature_sensor
 import wiring_config_parser
+import actuator_observer
 
 from btlewrap import available_backends, GatttoolBackend
 
@@ -113,7 +114,7 @@ def make_arduino_sensors(arduino_uart):
     local_arduino_sensors = arduino_sensors.CachingArduinoSensors(
         arduino_uart,
         clock.Clock())
-    return temperature_sensor.TemperatureSensor(local_arduino_sensors), humidity_sensor.HumiditySensor(local_arduino_sensors),
+    return temperature_sensor.TemperatureSensor(local_arduino_sensors), humidity_sensor.HumiditySensor(local_arduino_sensors), actuator_observer.ActuatorObserver(local_arduino_sensors)
 
 def make_miflora_sensors(miflora_mac):
     """Creates sensors derived from the Mi Flora sensor.
@@ -198,13 +199,46 @@ def make_pump_manager(moisture_threshold, sleep_windows, arduino_uart,
     return pump.PumpManager(water_pump, pump_scheduler, moisture_threshold,
                             pump_amount, pump_timer)
 
+def make_climate_manager(desired_ambient_temperature, arduino_uart,
+                      db_connection):
+    """Creates a pump manager instance.
+
+    Args:
+        desired_ambient_temperature:
+        arduino_uart: serial communication instance for the GreenPiThumb.
+        db_connection: Database connection to use to retrieve pump history.
+
+    Returns:
+        A ClimateManager instance with the given settings.
+    """
+    water_pump = pump.Pump(arduino_uart,
+                           clock.Clock(), 36
+                           # wiring_config.gpio_pins.pump
+                           )
+    pump_scheduler = pump.PumpScheduler(clock.LocalClock(), sleep_windows)
+    pump_timer = clock.Timer(clock.Clock(), pump_interval)
+    last_pump_time = pump_history.last_pump_time(
+        db_store.WateringEventStore(db_connection))
+    if last_pump_time:
+        logger.info('last watering was at %s', last_pump_time)
+        time_remaining = max(
+            datetime.timedelta(seconds=0),
+            (last_pump_time + pump_interval) - clock.Clock().now())
+    else:
+        logger.info('no previous watering found')
+        time_remaining = datetime.timedelta(seconds=0)
+    logger.info('time until until next watering: %s', time_remaining)
+    pump_timer.set_remaining(time_remaining)
+    return pump.PumpManager(water_pump, pump_scheduler, moisture_threshold,
+                            pump_amount, pump_timer)
+
 
 def make_sensor_pollers(poll_interval, photo_interval, record_queue,
                         soil_temperature_sensor,
                         soil_moisture_sensor, ambient_temperature_sensor,
                         ambient_humidity_sensor, light_sensor,
                         # camera_manager,
-                        pump_manager, window_manager, fan_manager):
+                        pump_manager, actuator_observer):
     """Creates a poller for each GreenPiThumb sensor.
 
     Args:
@@ -242,7 +276,7 @@ def make_sensor_pollers(poll_interval, photo_interval, record_queue,
             pump_manager),
         poller_factory.create_climate_control_poller(
             ambient_temperature_sensor, ambient_humidity_sensor,
-            window_manager, fan_manager),
+            actuator_observer),
         poller_factory.create_light_poller(light_sensor),
         # camera_poller_factory.create_camera_poller(camera_manager)
     ]  # yapf: disable
@@ -280,7 +314,7 @@ def main(args):
     # arduino_uart.send(1)
     # adc = make_adc(wiring_config)
     local_soil_temperature_sensor, local_soil_moisture_sensor, local_light_sensor = make_miflora_sensors("C4:7C:8D:6A:6B:3A")
-    local_ambient_temperature_sensor, local_ambient_humidity_sensor = make_arduino_sensors(arduino_uart)
+    local_ambient_temperature_sensor, local_ambient_humidity_sensor, local_actuator_observer = make_arduino_sensors(arduino_uart)
     # local_soil_moisture_sensor = make_soil_moisture_sensor(
     #     adc, arduino_uart, wiring_config)
     # local_soil_temperature_sensor, local_humidity_sensor = make_dht11_sensors(
@@ -300,6 +334,10 @@ def main(args):
             args.pump_amount,
             db_connection,
             datetime.timedelta(hours=args.pump_interval))
+        # climate_manager = make_climate_manager(
+        #     args.desired_ambient_temperature,
+        #     arduino_uart,
+        #     db_connection)
         pollers = make_sensor_pollers(
             datetime.timedelta(minutes=args.poll_interval),
             datetime.timedelta(minutes=args.photo_interval),
@@ -311,8 +349,7 @@ def main(args):
             local_light_sensor,
             # camera_manager,
             pump_manager,
-            0,
-            0)
+            local_actuator_observer)
         try:
             for current_poller in pollers:
                 current_poller.start_polling_async()

@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 # Maximum time a sensor reading can be used for, in seconds
 _FRESHNESS_THRESHOLD = 50
+_REQUEST_TIMEOUT = 120
 
 
 class CachingArduinoSensors(object):
@@ -57,12 +58,21 @@ class CachingArduinoSensors(object):
         """
         self._arduino_read_write_obj.txBuff[0] = 's'
         self._arduino_read_write_obj.send(1)
+        request_time = self._clock.now()
         while not self._arduino_read_write_obj.available():
             if self._arduino_read_write_obj.status < 0:
-                print('ERROR: {}'.format(self._arduino_read_write_obj.status))
+                logger.error('ERROR: {}'.format(self._arduino_read_write_obj.status))
+            if (self._clock.now() - request_time).total_seconds() >= (
+                    _REQUEST_TIMEOUT):
+                logger.warning('Sensor data request timed out. Requesting again.')
+                self._arduino_read_write_obj.txBuff[0] = 's'
+                self._arduino_read_write_obj.send(1)
+                request_time = self._clock.now()
         sensor_values = {}
         sensor_values["humidity"] = struct.unpack('f', bytes(self._arduino_read_write_obj.rxBuff[0:4]))[0]
         sensor_values["temperature"] = struct.unpack('f', bytes(self._arduino_read_write_obj.rxBuff[4:8]))[0]
+        sensor_values["window_position"] = int(self._arduino_read_write_obj.rxBuff[9])
+        # sensor_values["pump1_state"]  = int(self._arduino_read_write_obj.rxBuff[10])
         return sensor_values
 
     def humidity(self):
@@ -74,3 +84,13 @@ class CachingArduinoSensors(object):
         """Returns a recent ambient temperature reading in Celsius."""
         temperature = self._read_arduino()["temperature"]
         return temperature
+
+    def window_position(self):
+        """Returns a window position in rotations of the axle."""
+        window_position = self._read_arduino()["window_position"]
+        return window_position
+
+    # def pump1_state(self):
+    #     """Returns pump1_state."""
+    #     pump1_state = self._read_arduino()["pump1_state"]
+    #     return pump1_state

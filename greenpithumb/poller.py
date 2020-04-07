@@ -54,11 +54,11 @@ class SensorPollerFactory(object):
             ), self._record_queue, soil_moisture_sensor, pump_manager))
 
     def create_climate_control_poller(self, ambient_temperature_sensor, ambient_humidity_sensor,
-                 window_manager, fan_manager):
+                 actuator_observer):
         return _SensorPoller(
             _ClimateControlPollWorker(self._make_scheduler_func(
             ), self._record_queue, ambient_temperature_sensor, ambient_humidity_sensor,
-                         window_manager, fan_manager))
+                         actuator_observer))
 
     def create_camera_poller(self, camera_manager):
         return _SensorPoller(
@@ -293,7 +293,7 @@ class _ClimateControlPollWorker(_SensorPollWorkerBase):
     """
 
     def __init__(self, scheduler, record_queue, ambient_temperature_sensor, ambient_humidity_sensor,
-                 window_manager, fan_manager):
+                 actuator_observer):
         """Creates a new ClimaControlPollWorker object.
 
         Args:
@@ -302,15 +302,13 @@ class _ClimateControlPollWorker(_SensorPollWorkerBase):
                 watering event records for storage.
             ambient_temperature_sensor: An interface for reading the ambient temp level.
             ambient_humidity_sensor:
-            window_manager: An interface to manage a window.
-            fan_manager: An interface to manage a fan.
+            actuator_observer: An interface to monitor the actuators.
         """
         super(_ClimateControlPollWorker, self).__init__(scheduler, record_queue,
                                                       ambient_temperature_sensor)
         self._ambient_temperature_sensor = ambient_temperature_sensor
         self._ambient_humidity_sensor = ambient_humidity_sensor
-        self._pump_manager = window_manager
-        self._fan_manager = fan_manager
+        self._actuator_observer = actuator_observer
 
     def _poll_once(self):
         """Polls sensors and drives actuators
@@ -326,6 +324,17 @@ class _ClimateControlPollWorker(_SensorPollWorkerBase):
         self._record_queue.put(
             db_store.TemperatureRecord(self._scheduler.last_poll_time(),
                                         ambient_temperature))
+
+        window_position = self._actuator_observer.window_position()
+        self._record_queue.put(
+            db_store.WindowStateRecord(self._scheduler.last_poll_time(),
+                                        window_position))
+
+        # TODO this is not supposed to be here
+        # pump_state = self._actuator_observer.pump1_state()
+        # self._record_queue.put(
+        #     db_store.PumpStateRecord(self._scheduler.last_poll_time(),
+        #                                 pump_state))
 
         # miflora_battery = self._sensor.battery()
         # self._record_queue.put(
