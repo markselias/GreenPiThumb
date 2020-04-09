@@ -69,9 +69,10 @@ class CachingArduinoSensors(object):
                 self._arduino_read_write_obj.send(1)
                 request_time = self._clock.now()
         sensor_values = {}
-        sensor_values["humidity"] = struct.unpack('f', bytes(self._arduino_read_write_obj.rxBuff[0:4]))[0]
-        sensor_values["temperature"] = struct.unpack('f', bytes(self._arduino_read_write_obj.rxBuff[4:8]))[0]
-        sensor_values["window_position"] = int(self._arduino_read_write_obj.rxBuff[9])
+        sensor_values["humidity"] = struct.unpack('=f', bytes(self._arduino_read_write_obj.rxBuff[0:4]))[0]
+        sensor_values["temperature"] = struct.unpack('=f', bytes(self._arduino_read_write_obj.rxBuff[4:8]))[0]
+        sensor_values["window_position"] = struct.unpack('=B', bytes(self._arduino_read_write_obj.rxBuff[8:9]))[0]
+        sensor_values["pump1_state"] = struct.unpack('=B', bytes(self._arduino_read_write_obj.rxBuff[9:10]))[0]
         # sensor_values["pump1_state"]  = int(self._arduino_read_write_obj.rxBuff[10])
         return sensor_values
 
