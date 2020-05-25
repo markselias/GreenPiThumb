@@ -396,18 +396,21 @@ if __name__ == '__main__':
     parser.add_argument(
         '-a',
         '--pump_amounts',
+        type=int,
         nargs='+',
         help='Volume of water (in mL) to pump each time the water pump is run for every pump (divided by spaces)',
         required=True)
     parser.add_argument(
         '-r',
         '--pump_rates',
+        type=int,
         nargs='+',
         help='Volume of water (in mL) per minute for every pump (divided by spaces)',
         required=True)
     parser.add_argument(
         '-w',
         '--pump_interval',
+        type=float,
         nargs='+',
         help='Max number of hours between plant waterings',
         required=True)
@@ -451,6 +454,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '-m',
         '--moisture_threshold',
+        type=int,
         nargs='+',
         help=('Moisture threshold to start pump. The pump will turn on if the '
               'moisture level drops below this level'),
