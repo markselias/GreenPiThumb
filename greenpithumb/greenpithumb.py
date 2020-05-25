@@ -427,7 +427,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '-r',
         '--pump_rates',
-        type=int,
+        type=float,
         nargs='+',
         help='Volume of water (in mL) per minute for every pump (divided by spaces)',
         required=True)

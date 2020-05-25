@@ -28,7 +28,7 @@ class Pump(object):
         self._arduino_uart = arduino_uart
         self._clock = clock
         self._pump_pin = pump_pin
-        self._pump_rate = int(pump_rate)
+        self._pump_rate = pump_rate
         self._exclusive_pump_lock = exclusive_pump_lock
         self._someone_pumping_lock = someone_pumping_lock
         self._pump_exclusivity = pump_exclusivity
