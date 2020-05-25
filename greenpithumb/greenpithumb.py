@@ -28,6 +28,7 @@ import record_processor
 import sleep_windows
 import soil_moisture_sensor
 import temperature_sensor
+import threading
 import soil_temperature_sensor
 import wiring_config_parser
 import actuator_observer
@@ -164,7 +165,7 @@ def make_camera_manager(rotation, image_path, light_sensor):
 
 def make_pump_manager(pump_id, moisture_threshold, sleep_windows, arduino_uart,
                       # wiring_config,
-                      pump_amount, pump_rate, db_connection, pump_interval):
+                      pump_amount, pump_rate, db_connection, pump_interval, exclusive_pump_lock, someone_pumping_lock, pump_exclusivity):
     """Creates a pump manager instance.
 
     Args:
@@ -184,7 +185,8 @@ def make_pump_manager(pump_id, moisture_threshold, sleep_windows, arduino_uart,
     water_pump = pump.Pump(pump_id,
                            arduino_uart,
                            clock.Clock(), 36,
-                           pump_rate
+                           pump_rate,
+                           exclusive_pump_lock, someone_pumping_lock, pump_exclusivity
                            # wiring_config.gpio_pins.pump
                            )
     pump_scheduler = pump.PumpScheduler(clock.LocalClock(), sleep_windows)
@@ -309,6 +311,23 @@ def create_record_processor(db_connection, record_queue):
 
 def main(args):
     configure_logging(args.verbose)
+    # Check if number of arguments is right
+    if len(args.pump_amounts) != args.n_pumps:
+        logger.error('Provided %d pump amounts instead of the required %d', len(args.pump_amounts), args.n_pumps)
+        return False
+    if len(args.pump_rates) != args.n_pumps:
+        logger.error('Provided %d pump rates instead of the required %d', len(args.pump_rates), args.n_pumps)
+        return False
+    if len(args.pump_intervals) != args.n_pumps:
+        logger.error('Provided %d pump intervals instead of the required %d', len(args.pump_intervals), args.n_pumps)
+        return False
+    if len(args.pump_exclusivities) != args.n_pumps:
+        logger.error('Provided %d pump excluvity flags instead of the required %d', len(args.pump_exclusivities), args.n_pumps)
+        return False
+    if len(args.moisture_threshold) != args.n_pumps:
+        logger.error('Provided %d moisture thresholds instead of the required %d', len(args.moisture_threshold), args.n_pumps)
+        return False
+
     logger.info('starting greenpithumb')
     # wiring_config = read_wiring_config(args.config_file)
     record_queue = queue.Queue()
@@ -336,6 +355,8 @@ def main(args):
     with contextlib.closing(
             db_store.open_or_create_db(args.db_file)) as db_connection:
         record_processor = create_record_processor(db_connection, record_queue)
+        exclusive_pump_lock = threading.Lock()
+        someone_pumping_lock = threading.Lock()
         pump_managers = []
         for pump_number in range(n_pumps):
             pump_managers.append(
@@ -348,7 +369,10 @@ def main(args):
                     args.pump_amounts[pump_number],
                     args.pump_rates[pump_number],
                     db_connection,
-                    datetime.timedelta(hours=float(args.pump_interval[pump_number])))
+                    datetime.timedelta(hours=float(args.pump_intervals[pump_number])),
+                    exclusive_pump_lock,
+                    someone_pumping_lock,
+                    args.pump_exclusivities[pump_number])
                     )
 
         # climate_manager = make_climate_manager(
@@ -409,10 +433,17 @@ if __name__ == '__main__':
         required=True)
     parser.add_argument(
         '-w',
-        '--pump_interval',
+        '--pump_intervals',
         type=float,
         nargs='+',
         help='Max number of hours between plant waterings',
+        required=True)
+    parser.add_argument(
+        '-x',
+        '--pump_exclusivities',
+        type=int,
+        nargs='+',
+        help='1 for exclusive pump, 0 the others (divided by spaces) e.g. "0 1 0 0" for only the second pump of 4 as exclusive',
         required=True)
     parser.add_argument(
         '-p',
@@ -458,7 +489,7 @@ if __name__ == '__main__':
         nargs='+',
         help=('Moisture threshold to start pump. The pump will turn on if the '
               'moisture level drops below this level'),
-        default=[0, 0, 0, 0, 0])
+        required=True)
     parser.add_argument(
         '--camera_rotation',
         type=int,
