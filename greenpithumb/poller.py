@@ -267,20 +267,28 @@ class _SoilWateringPollWorker(_SensorPollWorkerBase):
 
 
         """
-        soil_moisture = self._sensor.soil_moisture()
-        self._record_queue.put(
-            db_store.SoilMoistureRecord(self._scheduler.last_poll_time(),
-                                        soil_moisture))
+        soil_moisture = 0
+        try:
+            print("REACTIVATE MIFLORA READING")
+            # soil_moisture = self._sensor.soil_moisture()
+            #
+            # self._record_queue.put(
+            #     db_store.SoilMoistureRecord(self._scheduler.last_poll_time(),
+            #                                 soil_moisture))
+            #
+            # miflora_battery = self._sensor.battery()
+            # self._record_queue.put(
+            #     db_store.MifloraBatteryRecord(self._scheduler.last_poll_time(),
+            #                                 miflora_battery))
 
-        miflora_battery = self._sensor.battery()
-        self._record_queue.put(
-            db_store.MifloraBatteryRecord(self._scheduler.last_poll_time(),
-                                        miflora_battery))
+        except:
+            print("ERROR: Miflora error (probably not reacheable)")
 
         ml_pumped = self._pump_manager.pump_if_needed(soil_moisture)
         if ml_pumped > 0:
             self._record_queue.put(
                 db_store.WateringEventRecord(self._scheduler.last_poll_time(),
+                                             self._pump_manager._pump._pump_id,
                                              ml_pumped))
 
 
@@ -353,8 +361,8 @@ class _CameraPollWorker(_SensorPollWorkerBase):
 
     def _poll_once(self):
         """Captures and stores an image."""
-        if self._sensor.sufficient_light():
-            self._sensor.save_photo()
+        # if self._sensor.sufficient_light():
+        self._sensor.save_photo()
 
     def stop(self):
         """End worker polling and close camera."""

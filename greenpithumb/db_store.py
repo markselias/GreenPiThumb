@@ -20,7 +20,7 @@ TemperatureRecord = collections.namedtuple('TemperatureRecord',
                                            ['timestamp', 'temperature'])
 # water_pumped is the volume of water pumped in mL.
 WateringEventRecord = collections.namedtuple('WateringEventRecord',
-                                             ['timestamp', 'water_pumped'])
+                                             ['timestamp', 'pump_id', 'water_pumped'])
 
 SoilTemperatureRecord = collections.namedtuple('SoilTemperatureRecord',
                                             ['timestamp', 'soil_temperature'])
@@ -57,7 +57,27 @@ CREATE TABLE light
     timestamp TEXT,
     light REAL
 );
-CREATE TABLE watering_events
+CREATE TABLE watering_events_pump_0
+(
+    timestamp TEXT,
+    water_pumped REAL   --amount of water pumped (in mL)
+);
+CREATE TABLE watering_events_pump_1
+(
+    timestamp TEXT,
+    water_pumped REAL   --amount of water pumped (in mL)
+);
+CREATE TABLE watering_events_pump_2
+(
+    timestamp TEXT,
+    water_pumped REAL   --amount of water pumped (in mL)
+);
+CREATE TABLE watering_events_pump_3
+(
+    timestamp TEXT,
+    water_pumped REAL   --amount of water pumped (in mL)
+);
+CREATE TABLE watering_events_pump_4
 (
     timestamp TEXT,
     water_pumped REAL   --amount of water pumped (in mL)
@@ -180,6 +200,7 @@ class _DbStoreBase(object):
                                                    _TIMESTAMP_FORMAT).replace(
                                                        tzinfo=pytz.utc)
             data.append((timestamp, row[1]))
+            print((timestamp, row[1]))
         typed_data = map(record_type._make, data)
         return typed_data
 
@@ -301,18 +322,39 @@ class WateringEventStore(_DbStoreBase):
         Args:
             watering_event_record: Watering event record to store.
         """
-        self._do_insert('INSERT INTO watering_events VALUES (?, ?)',
+        self._do_insert('INSERT INTO watering_events_pump_' + str(watering_event_record.pump_id) +' VALUES (?, ?)',
                         watering_event_record.timestamp,
                         watering_event_record.water_pumped)
 
-    def get(self):
+    def get(self, pump_id):
         """Retrieves timestamp and volume of water pumped(in mL).
 
         Returns:
             A list of objects with 'timestamp' and 'water_pumped' fields.
         """
-        return self._do_get('SELECT * FROM watering_events',
+        return self._do_get('SELECT * FROM watering_events_pump_' + str(pump_id),
                             WateringEventRecord)
+
+    def _do_get(self, sql, record_type):
+        """Executes a SQL select query and returns the results.
+
+        Args:
+          sql: SQL select query string.
+          record_type: The record type to parse the SQL results into.
+
+        Returns:
+          A list of database records corresponding to the select query.
+        """
+        self._cursor.execute(sql)
+        data = []
+        for row in self._cursor.fetchall():
+            timestamp = datetime.datetime.strptime(row[0],
+                                                   _TIMESTAMP_FORMAT).replace(
+                                                       tzinfo=pytz.utc)
+            data.append((timestamp, 0, row[1]))
+            print((timestamp, row[1]))
+        typed_data = map(record_type._make, data)
+        return typed_data
 
 
 

@@ -31,6 +31,7 @@ import temperature_sensor
 import soil_temperature_sensor
 import wiring_config_parser
 import actuator_observer
+import cv_cam
 
 from btlewrap import available_backends, GatttoolBackend
 
@@ -154,15 +155,16 @@ def make_camera_manager(rotation, image_path, light_sensor):
     Returns:
         A CameraManager instance with the given settings.
     """
-    camera = picamera.PiCamera(resolution=picamera.PiCamera.MAX_RESOLUTION)
-    camera.rotation = rotation
+    # camera = picamera.PiCamera(resolution=picamera.PiCamera.MAX_RESOLUTION)
+    camera = cv_cam.CameraCV(0)
+    # camera.rotation = rotation
     return camera_manager.CameraManager(image_path,
                                         clock.Clock(), camera, light_sensor)
 
 
-def make_pump_manager(moisture_threshold, sleep_windows, arduino_uart,
+def make_pump_manager(pump_id, moisture_threshold, sleep_windows, arduino_uart,
                       # wiring_config,
-                      pump_amount, db_connection, pump_interval):
+                      pump_amount, pump_rate, db_connection, pump_interval):
     """Creates a pump manager instance.
 
     Args:
@@ -178,14 +180,17 @@ def make_pump_manager(moisture_threshold, sleep_windows, arduino_uart,
     Returns:
         A PumpManager instance with the given settings.
     """
-    water_pump = pump.Pump(arduino_uart,
-                           clock.Clock(), 36
+    logger.info('Initializing pump %d', pump_id)
+    water_pump = pump.Pump(pump_id,
+                           arduino_uart,
+                           clock.Clock(), 36,
+                           pump_rate
                            # wiring_config.gpio_pins.pump
                            )
     pump_scheduler = pump.PumpScheduler(clock.LocalClock(), sleep_windows)
     pump_timer = clock.Timer(clock.Clock(), pump_interval)
     last_pump_time = pump_history.last_pump_time(
-        db_store.WateringEventStore(db_connection))
+        db_store.WateringEventStore(db_connection), pump_id)
     if last_pump_time:
         logger.info('last watering was at %s', last_pump_time)
         time_remaining = max(
@@ -201,7 +206,7 @@ def make_pump_manager(moisture_threshold, sleep_windows, arduino_uart,
 
 def make_climate_manager(desired_ambient_temperature, arduino_uart,
                       db_connection):
-    """Creates a pump manager instance.
+    """Creates a climate manager instance.
 
     Args:
         desired_ambient_temperature:
@@ -237,8 +242,8 @@ def make_sensor_pollers(poll_interval, photo_interval, record_queue,
                         soil_temperature_sensor,
                         soil_moisture_sensor, ambient_temperature_sensor,
                         ambient_humidity_sensor, light_sensor,
-                        # camera_manager,
-                        pump_manager, actuator_observer):
+                        camera_manager,
+                        pump_managers, n_pumps, actuator_observer):
     """Creates a poller for each GreenPiThumb sensor.
 
     Args:
@@ -264,22 +269,22 @@ def make_sensor_pollers(poll_interval, photo_interval, record_queue,
     photo_make_scheduler_func = lambda: poller.Scheduler(utc_clock, photo_interval)
     poller_factory = poller.SensorPollerFactory(make_scheduler_func,
                                                 record_queue)
-    # camera_poller_factory = poller.SensorPollerFactory(
-    #     photo_make_scheduler_func, record_queue=None)
+    camera_poller_factory = poller.SensorPollerFactory(
+        photo_make_scheduler_func, record_queue=None)
 
-    return [
-        # poller_factory.create_ambient_temperature_poller(ambient_temperature_sensor),
-        # poller_factory.create_humidity_poller(ambient_humidity_sensor),
-        poller_factory.create_soil_temperature_poller(soil_temperature_sensor),
-        poller_factory.create_soil_watering_poller(
+    pollers = []
+    # pollers.append(poller_factory.create_soil_temperature_poller(soil_temperature_sensor))
+    for pump_number in range(n_pumps):
+        pollers.append(poller_factory.create_soil_watering_poller(
             soil_moisture_sensor,
-            pump_manager),
-        poller_factory.create_climate_control_poller(
-            ambient_temperature_sensor, ambient_humidity_sensor,
-            actuator_observer),
-        poller_factory.create_light_poller(light_sensor),
-        # camera_poller_factory.create_camera_poller(camera_manager)
-    ]  # yapf: disable
+            pump_managers[pump_number]))
+    # pollers.append(poller_factory.create_climate_control_poller(
+    #     ambient_temperature_sensor, ambient_humidity_sensor,
+    #     actuator_observer))
+    # pollers.append(poller_factory.create_light_poller(light_sensor))
+    # pollers.append(camera_poller_factory.create_camera_poller(camera_manager))
+
+    return pollers
 
 
 def create_record_processor(db_connection, record_queue):
@@ -307,9 +312,14 @@ def main(args):
     logger.info('starting greenpithumb')
     # wiring_config = read_wiring_config(args.config_file)
     record_queue = queue.Queue()
-    arduino_uart = txfer.SerialTransfer('/dev/ttyUSB0')
-    arduino_uart.open()
-    sleep(2)
+    try:
+        arduino_uart = txfer.SerialTransfer('/dev/ttyUSB0')
+        arduino_uart.open()
+        sleep(2)
+    except:
+        print("ERROR: Couldn't connect to Arduino")
+        return
+    n_pumps = args.n_pumps;
     # arduino_uart.txBuff[0] = 'a'
     # arduino_uart.send(1)
     # adc = make_adc(wiring_config)
@@ -320,20 +330,27 @@ def main(args):
     # local_soil_temperature_sensor, local_humidity_sensor = make_dht11_sensors(
     #     wiring_config)
     # local_light_sensor = make_light_sensor(adc, wiring_config)
-    # camera_manager = make_camera_manager(args.camera_rotation, args.image_path,
-    #                                      local_light_sensor)
+    camera_manager = make_camera_manager(args.camera_rotation, args.image_path,
+                                         local_light_sensor)
 
     with contextlib.closing(
             db_store.open_or_create_db(args.db_file)) as db_connection:
         record_processor = create_record_processor(db_connection, record_queue)
-        pump_manager = make_pump_manager(
-            args.moisture_threshold,
-            sleep_windows.parse(args.sleep_window),
-            arduino_uart,
-            # wiring_config,
-            args.pump_amount,
-            db_connection,
-            datetime.timedelta(hours=args.pump_interval))
+        pump_managers = []
+        for pump_number in range(n_pumps):
+            pump_managers.append(
+                make_pump_manager(
+                    pump_number,
+                    int(args.moisture_threshold[pump_number]),
+                    sleep_windows.parse(args.sleep_window),
+                    arduino_uart,
+                    # wiring_config,
+                    args.pump_amounts[pump_number],
+                    args.pump_rates[pump_number],
+                    db_connection,
+                    datetime.timedelta(hours=float(args.pump_interval[pump_number])))
+                    )
+
         # climate_manager = make_climate_manager(
         #     args.desired_ambient_temperature,
         #     arduino_uart,
@@ -347,8 +364,9 @@ def main(args):
             local_ambient_temperature_sensor,
             local_ambient_humidity_sensor,
             local_light_sensor,
-            # camera_manager,
-            pump_manager,
+            camera_manager,
+            pump_managers,
+            n_pumps,
             local_actuator_observer)
         try:
             for current_poller in pollers:
@@ -369,11 +387,30 @@ if __name__ == '__main__':
         prog='GreenPiThumb',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
-        '-a',
-        '--pump_amount',
+        '-n',
+        '--n_pumps',
         type=int,
-        help='Volume of water (in mL) to pump each time the water pump is run',
-        default=200)
+        choices=(1, 2, 3, 4, 5),
+        help='Specifies the amount of pumps to control.',
+        default=2)
+    parser.add_argument(
+        '-a',
+        '--pump_amounts',
+        nargs='+',
+        help='Volume of water (in mL) to pump each time the water pump is run for every pump (divided by spaces)',
+        required=True)
+    parser.add_argument(
+        '-r',
+        '--pump_rates',
+        nargs='+',
+        help='Volume of water (in mL) per minute for every pump (divided by spaces)',
+        required=True)
+    parser.add_argument(
+        '-w',
+        '--pump_interval',
+        nargs='+',
+        help='Max number of hours between plant waterings',
+        required=True)
     parser.add_argument(
         '-p',
         '--poll_interval',
@@ -386,12 +423,6 @@ if __name__ == '__main__':
         type=float,
         help='Number of minutes between each camera photo',
         default=(4 * 60))
-    parser.add_argument(
-        '-w',
-        '--pump_interval',
-        type=float,
-        help='Max number of hours between plant waterings',
-        default=(7 * 24))
     parser.add_argument(
         '-c',
         '--config_file',
@@ -420,10 +451,10 @@ if __name__ == '__main__':
     parser.add_argument(
         '-m',
         '--moisture_threshold',
-        type=int,
+        nargs='+',
         help=('Moisture threshold to start pump. The pump will turn on if the '
               'moisture level drops below this level'),
-        default=0)
+        default=[0, 0, 0, 0, 0])
     parser.add_argument(
         '--camera_rotation',
         type=int,

@@ -1,4 +1,4 @@
-def last_pump_time(watering_event_store):
+def last_pump_time(watering_event_store, pump_id):
     """Returns the time of the most recent pump watering event.
 
     Args:
@@ -8,10 +8,10 @@ def last_pump_time(watering_event_store):
     Returns:
         Timestamp of most recent pump watering event, as a datetime.
     """
-    watering_history = watering_event_store.get()
+    watering_history = watering_event_store.get(pump_id)
     watering_history_list = list(watering_history)
     if len(watering_history_list) == 0:
         return None
-    print(watering_history_list)
+    # print(watering_history_list)
     watering_history_list.sort(key=lambda record: record.timestamp)
     return watering_history_list[-1].timestamp

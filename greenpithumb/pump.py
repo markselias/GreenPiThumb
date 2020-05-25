@@ -13,7 +13,7 @@ DEFAULT_PUMP_AMOUNT = 200
 class Pump(object):
     """Wrapper for a Seaflo 12V water pump."""
 
-    def __init__(self, arduino_uart, clock, pump_pin):
+    def __init__(self, pump_id, arduino_uart, clock, pump_pin, pump_rate):
         """Creates a new Pump wrapper.
 
         Args:
@@ -21,9 +21,11 @@ class Pump(object):
             clock: A clock interface.
             pump_pin: Raspberry Pi pin to which the pump is connected.
         """
+        self._pump_id = pump_id
         self._arduino_uart = arduino_uart
         self._clock = clock
         self._pump_pin = pump_pin
+        self._pump_rate = int(pump_rate)
 
     def pump_water(self, amount_ml):
         """Pumps the specified amount of water.
@@ -39,16 +41,18 @@ class Pump(object):
         elif amount_ml < 0.0:
             raise ValueError('Cannot pump a negative amount of water')
         else:
-            logger.info('turning pump on (with GPIO pin %d)', self._pump_pin)
+            logger.info('turning pump%d on', self._pump_id)
             self._arduino_uart.txBuff[0] = 'a'
-            self._arduino_uart.send(1)
+            self._arduino_uart.txBuff[1] = self._pump_id
+            self._arduino_uart.send(2)
 
-            wait_time_seconds = amount_ml / _PUMP_RATE_ML_PER_SEC
+            wait_time_seconds = amount_ml / self._pump_rate
             self._clock.wait(wait_time_seconds)
 
-            logger.info('turning pump off (with GPIO pin %d)', self._pump_pin)
+            logger.info('turning pump%d off ', self._pump_id)
             self._arduino_uart.txBuff[0] = 'z'
-            self._arduino_uart.send(1)
+            self._arduino_uart.txBuff[1] = self._pump_id
+            self._arduino_uart.send(2)
             logger.info('pumped %.f mL of water', amount_ml)
 
         return
@@ -75,7 +79,7 @@ class PumpManager(object):
         self._pump = pump
         self._pump_scheduler = pump_scheduler
         self._moisture_threshold = moisture_threshold
-        self._pump_amount = pump_amount
+        self._pump_amount = int(pump_amount)
         self._timer = timer
 
     def pump_if_needed(self, moisture):
