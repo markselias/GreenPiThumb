@@ -275,16 +275,16 @@ def make_sensor_pollers(poll_interval, photo_interval, record_queue,
         photo_make_scheduler_func, record_queue=None)
 
     pollers = []
-    # pollers.append(poller_factory.create_soil_temperature_poller(soil_temperature_sensor))
+    pollers.append(poller_factory.create_soil_temperature_poller(soil_temperature_sensor))
     for pump_number in range(n_pumps):
         pollers.append(poller_factory.create_soil_watering_poller(
             soil_moisture_sensor,
             pump_managers[pump_number]))
-    # pollers.append(poller_factory.create_climate_control_poller(
-    #     ambient_temperature_sensor, ambient_humidity_sensor,
-    #     actuator_observer))
-    # pollers.append(poller_factory.create_light_poller(light_sensor))
-    # pollers.append(camera_poller_factory.create_camera_poller(camera_manager))
+    pollers.append(poller_factory.create_climate_control_poller(
+        ambient_temperature_sensor, ambient_humidity_sensor,
+        actuator_observer))
+    pollers.append(poller_factory.create_light_poller(light_sensor))
+    pollers.append(camera_poller_factory.create_camera_poller(camera_manager))
 
     return pollers
 

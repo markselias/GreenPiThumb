@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 # UTC), as YYYY-MM-DDTHH:MMZ (minutes-level precision).
 _FILENAME_FORMAT = '%Y-%m-%dT%H%MZ.jpg'
 # Light level below which camera will not capture photos.
-LIGHT_THRESHOLD_PCT = 60
+LIGHT_THRESHOLD_PCT = 0
 
 
 class CameraManager(object):

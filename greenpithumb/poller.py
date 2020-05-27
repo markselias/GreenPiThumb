@@ -269,17 +269,16 @@ class _SoilWateringPollWorker(_SensorPollWorkerBase):
         """
         soil_moisture = 0
         try:
-            print("REACTIVATE MIFLORA READING")
-            # soil_moisture = self._sensor.soil_moisture()
-            #
-            # self._record_queue.put(
-            #     db_store.SoilMoistureRecord(self._scheduler.last_poll_time(),
-            #                                 soil_moisture))
-            #
-            # miflora_battery = self._sensor.battery()
-            # self._record_queue.put(
-            #     db_store.MifloraBatteryRecord(self._scheduler.last_poll_time(),
-            #                                 miflora_battery))
+            soil_moisture = self._sensor.soil_moisture()
+
+            self._record_queue.put(
+                db_store.SoilMoistureRecord(self._scheduler.last_poll_time(),
+                                            soil_moisture))
+
+            miflora_battery = self._sensor.battery()
+            self._record_queue.put(
+                db_store.MifloraBatteryRecord(self._scheduler.last_poll_time(),
+                                            miflora_battery))
 
         except:
             print("ERROR: Miflora error (probably not reacheable)")
